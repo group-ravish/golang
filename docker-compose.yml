@@ -1,0 +1,47 @@
+version: "3.8"
+services:
+  db:
+    image: postgres
+    container_name: postgres
+    restart: always
+    networks:
+      - device-net
+    ports:
+      - "5432:5432"
+    expose:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - local_pgdata:/Users/guru/Learn/go/Practice/day1
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    networks:
+      - device-net
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: postgres@test.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+    volumes:
+      - pgadmin-data:/Users/guru/Learn/go/Practice/day1
+  deviceapi:
+    image: deviceapi
+    container_name: deviceapi
+    restart: always
+    networks:
+      - device-net
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+
+volumes:
+  local_pgdata:
+  pgadmin-data:
+networks:
+  device-net:
+    driver: bridge
