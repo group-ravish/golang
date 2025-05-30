@@ -66,13 +66,21 @@ func createDatabase() {
 
 func main() {
 	createDatabase()
+
+	// levelVar.Set(slog.LevelInfo) // default level
+
+	// logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	// 	Level: levelVar,
+	// }))
+	// slog.SetDefault(logger)
+
 	router := gin.Default()
 	router.GET("/v1/devices", getDevices)
 	router.POST("/v1/devices", postDevices)
 	router.GET("/v1/devices/:id", getDeviceByID)
 	router.GET("/v1/devices/:id/status", getStatusByDeviceID)
 	router.PATCH("/v1/devices", patchDeviceInfo)
-	router.POST("/v1/loglevel/:level")
+	router.PUT("/v1/loglevel", setLogLevel)
 
 	deviceMap = make(map[string]device)
 	for _, device := range devices {
@@ -86,6 +94,54 @@ var devices = []device{
 	{DeviceID: "1", Name: "MacBook M1", Type: "Laptop", OS: "MacOS", Owner: "Guru", Status: "Active"},
 	{DeviceID: "2", Name: "Lenovo LOQ", Type: "Laptop", OS: "Windows", Owner: "Nithin", Status: "Inactive"},
 	{DeviceID: "3", Name: "MacBook M2", Type: "Laptop", OS: "MacOS", Owner: "Porkodi", Status: "Active"},
+}
+
+// v1/loglevel?level=debug/info
+func setLogLevel(ctx *gin.Context) {
+	slog.Debug("Entering Set Log Level Function")
+	var loglevel struct {
+		Level string `json:"level"`
+	}
+	if err := ctx.BindJSON(&loglevel); err != nil {
+		slog.Error("Error retrieving log info", "error", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	switch loglevel.Level {
+	case "debug":
+		// slog.SetLogLoggerLevel(slog.LevelDebug)
+		setLevelArg(slog.LevelDebug)
+		slog.Debug("Level set to DEBUG")
+	case "info":
+		setLevelArg(slog.LevelInfo)
+		slog.Info("Level set to INFO")
+	case "warn":
+		setLevelArg(slog.LevelWarn)
+		slog.Warn("Level set to WARN")
+	case "error":
+		setLevelArg(slog.LevelError)
+		slog.Error("Level set to ERROR")
+	default:
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid log level"})
+		slog.Error("Entered invalid log level")
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Log level updated"})
+}
+
+func setLevelArg(logvar slog.Level) {
+	logfile, err := os.OpenFile("device.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("failed to open log file: %v", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(logfile, &slog.HandlerOptions{
+		Level: &logvar,
+	}))
+	slog.SetDefault(logger)
+
 }
 
 func getDevices(ctx *gin.Context) {
